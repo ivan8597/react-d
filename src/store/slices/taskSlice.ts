@@ -14,6 +14,9 @@ const initialState: TasksState = {
     id: `task-${index}`, 
     description: '',
     createdAt: new Date().toISOString(),
+    taskAssigneeName: task.assigneeId 
+      ? dictionary.assignees[String(task.assigneeId) as keyof typeof dictionary.assignees] 
+      : undefined,
   })),
   dictionary,
 };

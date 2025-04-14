@@ -8,8 +8,8 @@ import { GlobalStyles } from './styles/GlobalStyles';
 
 const AppWrapper = styled.div`
   min-height: 100vh;
-  background: #F1F1F1;
-  padding: 16px;
+  background: #FFFFFF;
+  padding: 24px;
 `;
 
 const Header = styled.header`
@@ -25,7 +25,7 @@ const Title = styled.h1`
   color: #000000;
 `;
 
-const App = () => {
+const AppContent = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [initialModalData, setInitialModalData] = useState<{ statusId: number | null } | null>(null);
 
@@ -39,20 +39,24 @@ const App = () => {
     setIsModalOpen(true);
   };
 
-  const openModalDefault = () => {
-    setInitialModalData(null);
-    setIsModalOpen(true);
-  };
-
   return (
-    <Provider store={store}>
+    <>
       <GlobalStyles />
       <AppWrapper>
-        <Header>   
+        <Header>
+         
         </Header>
         <Board openModalForStatus={openModalForStatus} />
         {isModalOpen && <TaskModal onClose={closeModal} initialData={initialModalData} />}
       </AppWrapper>
+    </>
+  );
+}
+
+const App = () => {
+  return (
+    <Provider store={store}>
+     <AppContent />
     </Provider>
   );
 };

@@ -1,18 +1,19 @@
 import styled from 'styled-components';
-import { useState } from 'react';
+import { useState, ChangeEvent, KeyboardEvent, FocusEvent } from 'react';
 import { useAppDispatch, useAppSelector } from '../../hooks/useAppSelector';
-import { deleteTask } from '../../store/slices/taskSlice';
+import { deleteTask, updateTask } from '../../store/slices/taskSlice';
 import TaskModal from '../Modal/Modal';
 import { Task } from '../../types';
-import checkIcon from '../../styles/check.png';
-import zapIcon from '../../styles/zap.png';
-import notepadIcon from '../../styles/notepad.png';
-import deleteIcon from '../../styles/delete.png';
+import checkIcon from '../../assets/img/check.png';
+import zapIcon from '../../assets/img/zap.png';
+import notepadIcon from '../../assets/img/notepad.png';
+import deleteIcon from '../../assets/img/delete.png';
+import userIcon from '../../assets/img/user.png';
 
 const Card = styled.div`
   background: #FFFFFF;
   padding: 15px;
-  border-radius: 5px;
+  border-radius: 20px;
   box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.1);
   position: relative;
 `;
@@ -43,6 +44,8 @@ const TaskName = styled.h3`
   font-size: 14px;
   font-weight: 400;
   color: #000000;
+  flex-grow: 1;
+  min-width: 0;
 `;
 
 const TaskDescription = styled.p`
@@ -51,21 +54,54 @@ const TaskDescription = styled.p`
   margin-bottom: 12px;
 `;
 
-const AssigneeInfo = styled.div`
-  display: flex;
-  align-items: center;
+const AssigneeSection = styled.div`
+  margin-left: 24px;
   margin-top: 8px;
+  min-height: 50px;
+`;
+
+const AssigneeInfo = styled.div`
+  display: inline-flex;
+  align-items: center;
   font-size: 12px;
   color: #555;
-  margin-left: 24px;
+  cursor: pointer;
+  min-height: 20px;
+`;
+
+const AddAssigneePlaceholder = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #888;
+  cursor: pointer;
+  min-height: 20px;
+`;
+
+const UserInputIcon = styled.img`
+  width: 14px;
+  height: 14px;
+`;
+
+const AssigneeInput = styled.input`
+  width: 390px;
+  max-width: 100%;
+  height: 50px;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 12px;
+  box-sizing: border-box;
+  background: white;
 `;
 
 const StatusBadge = styled.div<{ $status: number }>`
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  width: 116px;
+  gap: 3px;
+  width: 85px;
   height: 24px;
   border-radius: 12px;
   font-size: 10px;
@@ -75,7 +111,6 @@ const StatusBadge = styled.div<{ $status: number }>`
     $status === 1 ? '#F7F5D4' :
     '#D4E0F7'};
   margin-top: 8px;
-  margin-left: 24px;
 `;
 
 const StatusIcon = styled.img`
@@ -86,13 +121,15 @@ const StatusIcon = styled.img`
 const ButtonsContainer = styled.div`
   display: flex;
   gap: 8px;
-  position: absolute;
-  top: 15px;
-  right: 15px;
-  opacity: 0;
-  transition: opacity 0.2s;
+  margin-left: auto;
+  flex-shrink: 0;
 
-  ${Card}:hover & {
+  & > button:first-child {
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+  }
+
+  ${Card}:hover & > button:first-child {
     opacity: 1;
   }
 `;
@@ -128,6 +165,53 @@ const TaskCard = ({ task }: TaskCardProps) => {
   const dispatch = useAppDispatch();
   const { statuses, assignees } = useAppSelector((state) => state.tasks.dictionary);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditingAssignee, setIsEditingAssignee] = useState(false);
+  const [assigneeInputValue, setAssigneeInputValue] = useState('');
+
+  const handleAssigneeEditStart = () => {
+    setAssigneeInputValue(assignees[task.assigneeId] ?? '');
+    setIsEditingAssignee(true);
+  };
+
+  const handleAssigneeInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setAssigneeInputValue(e.target.value);
+  };
+
+  const handleAssigneeEditComplete = () => {
+    const enteredName = assigneeInputValue.trim();
+    let foundAssigneeId: number | null = null;
+
+    for (const id in assignees) {
+      if (assignees[id].toLowerCase() === enteredName.toLowerCase()) {
+        foundAssigneeId = parseInt(id, 10);
+        break;
+      }
+    }
+
+    const updatedTaskData = {
+      ...task,
+      assigneeId: foundAssigneeId !== null ? foundAssigneeId : 0,
+      taskAssigneeName: enteredName,
+    };
+
+    if (enteredName !== (task.taskAssigneeName ?? '') || updatedTaskData.assigneeId !== task.assigneeId) {
+        dispatch(updateTask(updatedTaskData));
+    }
+
+    setIsEditingAssignee(false);
+  };
+
+  const handleAssigneeKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleAssigneeEditComplete();
+    } else if (e.key === 'Escape') {
+      setIsEditingAssignee(false);
+    }
+  };
+
+  const handleAssigneeBlur = () => {
+    handleAssigneeEditComplete();
+  };
 
   const handleDelete = () => {
     dispatch(deleteTask(task.id));
@@ -145,24 +229,47 @@ const TaskCard = ({ task }: TaskCardProps) => {
             <CheckIcon src={checkIcon} alt="check" />
           </CheckCircle>
           <TaskName>{task.taskName}</TaskName>
+          <ButtonsContainer>
+            <IconButton 
+              onClick={() => setIsModalOpen(true)} 
+              title="Редактировать"
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M8.545 4.765L9.235 5.455L2.44 12.25H1.75V11.56L8.545 4.765ZM11.245 0.25C11.0575 0.25 10.8625 0.325 10.72 0.4675L9.3475 1.84L12.16 4.6525L13.5325 3.28C13.825 2.9875 13.825 2.515 13.5325 2.2225L11.7775 0.4675C11.6275 0.3175 11.44 0.25 11.245 0.25ZM8.545 2.6425L0.25 10.9375V13.75H3.0625L11.3575 5.455L8.545 2.6425Z" fill="currentColor"/>
+              </svg>
+            </IconButton>
+            <IconButton onClick={handleDelete} title="Удалить">
+              <img src={deleteIcon} alt="Удалить" width="12" height="14" />
+            </IconButton>
+          </ButtonsContainer>
         </TaskHeader>
-        <AssigneeInfo>
-          <span>{assignees[task.assigneeId] ?? 'Не назначен'}</span>
-        </AssigneeInfo>
+
+        <AssigneeSection>
+          {isEditingAssignee ? (
+            <AssigneeInput
+              type="text"
+              value={assigneeInputValue}
+              onChange={handleAssigneeInputChange}
+              onBlur={handleAssigneeBlur}
+              onKeyDown={handleAssigneeKeyDown}
+              autoFocus
+            />
+          ) : task.taskAssigneeName ? (
+            <AssigneeInfo onClick={handleAssigneeEditStart}>
+              <span>{task.taskAssigneeName}</span>
+            </AssigneeInfo>
+          ) : (
+            <AddAssigneePlaceholder onClick={handleAssigneeEditStart}>
+              <UserInputIcon src={userIcon} alt="user" />
+              <span>Добавить ответственного</span>
+            </AddAssigneePlaceholder>
+          )}
+        </AssigneeSection>
+
         <StatusBadge $status={task.statusId}>
           <StatusIcon src={getStatusIcon(task.statusId)} alt={statuses[task.statusId]} />
           <span>{statuses[task.statusId]}</span>
         </StatusBadge>
-        <ButtonsContainer>
-          <IconButton onClick={() => setIsModalOpen(true)} title="Редактировать">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M8.545 4.765L9.235 5.455L2.44 12.25H1.75V11.56L8.545 4.765ZM11.245 0.25C11.0575 0.25 10.8625 0.325 10.72 0.4675L9.3475 1.84L12.16 4.6525L13.5325 3.28C13.825 2.9875 13.825 2.515 13.5325 2.2225L11.7775 0.4675C11.6275 0.3175 11.44 0.25 11.245 0.25ZM8.545 2.6425L0.25 10.9375V13.75H3.0625L11.3575 5.455L8.545 2.6425Z" fill="currentColor"/>
-            </svg>
-          </IconButton>
-          <IconButton onClick={handleDelete} title="Удалить">
-            <img src={deleteIcon} alt="Удалить" width="12" height="14" />
-          </IconButton>
-        </ButtonsContainer>
       </Card>
       {isModalOpen && (
         <TaskModal task={task} onClose={() => setIsModalOpen(false)} />

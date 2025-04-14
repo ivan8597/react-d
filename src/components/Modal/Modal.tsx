@@ -19,7 +19,7 @@ const ModalOverlay = styled.div`
 
 const ModalContent = styled.div`
   background: #FFFFFF;
-  padding: 25px;
+  padding: 25px 40px;
   border-radius: 10px;
   width: 100%;
   max-width: 630px;
@@ -155,7 +155,6 @@ interface TaskModalProps {
 
 interface FormInputs {
   taskName: string;
-  description: string;
   assigneeId: number;
   statusId: number;
 }
@@ -169,13 +168,12 @@ const TaskModal = ({ task, onClose, initialData }: TaskModalProps) => {
     defaultValues: task
       ? {
           taskName: task.taskName,
-          description: task.description,
           assigneeId: task.assigneeId,
           statusId: task.statusId,
         }
       : initialData?.statusId !== null && initialData?.statusId !== undefined
-        ? { statusId: initialData.statusId, description: '', taskName: '', assigneeId: 0 }
-        : { description: '', taskName: '', assigneeId: 0 },
+        ? { statusId: initialData.statusId, taskName: '', assigneeId: 0 }
+        : { taskName: '', assigneeId: 0 },
   });
 
   const onSubmit: SubmitHandler<FormInputs> = (data) => {
@@ -183,13 +181,17 @@ const TaskModal = ({ task, onClose, initialData }: TaskModalProps) => {
     const assigneeId = parseInt(String(data.assigneeId), 10);
 
     const newTask: Task = {
+      ...(task ? { description: task.description } : { description: '' }),
       id: task ? task.id : `task-${Date.now()}`,
       createdAt: task ? task.createdAt : new Date().toISOString(),
       statusId: isNaN(statusId) ? (initialData?.statusId ?? 0) : statusId,
       assigneeId: isNaN(assigneeId) ? 0 : assigneeId,
       taskName: data.taskName,
-      description: data.description,
+      taskAssigneeName: assigneeId 
+        ? assignees[String(assigneeId) as keyof typeof assignees] 
+        : undefined,
     };
+
     if (task) {
       dispatch(updateTask(newTask));
     } else {
@@ -215,13 +217,6 @@ const TaskModal = ({ task, onClose, initialData }: TaskModalProps) => {
               placeholder="Введите название задачи"
             />
             {errors.taskName && <span style={{ color: '#EF4444', fontSize: '12px' }}>{errors.taskName.message}</span>}
-          </FormGroup>
-          <FormGroup>
-            <Label>Описание задачи</Label>
-            <Textarea
-              {...register('description')}
-              placeholder="Введите описание задачи"
-            />
           </FormGroup>
           <FormGroup>
             <Label>Исполнитель</Label>

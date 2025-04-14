@@ -13,6 +13,7 @@ export type Task = {
   taskName: string;
   description: string;
   assigneeId: number;
+  taskAssigneeName?: string;
   statusId: number;
   createdAt: string;
 }
